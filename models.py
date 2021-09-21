@@ -37,6 +37,41 @@ class Vacancy(Base):
     pay_level = Column(String)
     salary = Column(Integer)
     finite_state = Column(Integer, default=0)
+    active = Column(Boolean, default=False)
+
+    def __repr__(self):
+        form = """
+Заявка на подбор персонала : {0}
+
+Компания: {1} {2}
+
+Наименование вакансии: {3}
+
+Обязанности: {4}
+
+Требования:
+
+{5}
+
+Условия:
+
+{6}
+
+Уровень вознаграждения за подбор: {7}
+
+Сумма вознаграждения: {8}
+"""
+        form = form.format(
+            self.id,
+            self.company,
+            self.website,
+            self.name,
+            self.duties,
+            self.requirements,
+            self.conditions,
+            self.pay_level,
+            self.salary)
+        return form
 
 user = "postgre"
 password = "postgre"

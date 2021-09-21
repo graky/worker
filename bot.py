@@ -7,7 +7,7 @@ from aiogram.dispatcher.filters import Text
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import State, StatesGroup
-API_TOKEN = ""
+API_TOKEN = "1707050052:AAG2mDycSulRLtoqUm4AX8FLYlu0gH5aDVk"
 
 logging.basicConfig(level=logging.INFO)
 storage = MemoryStorage()
@@ -33,8 +33,9 @@ pay_level_list = ['LIGHT', 'MEDIUM', 'HARD', 'PRO']
 pay_level_keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
 pay_level_keyboard.add(*pay_level_list)
 pay_level_dict = {'LIGHT': [1, 500], 'MEDIUM': [501, 5000], 'HARD': [5001, 10000], 'PRO': [10001, 10000000]}
-
-
+keyboard_activate = types.ReplyKeyboardMarkup(resize_keyboard=True)
+activate_buttons = ["Запустить подбор", "Сохранить в черновик", "Отменить"]
+keyboard_activate.add(*activate_buttons)
 class EmployerState(StatesGroup):
     company = State()
     website = State()
@@ -44,6 +45,7 @@ class EmployerState(StatesGroup):
     conditions = State()
     level = State()
     salary = State()
+    activate = State()
 
 
 @dp.message_handler(commands=['start'])
@@ -111,7 +113,7 @@ async def set_website(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=EmployerState.name)
-async def set_website(message: types.Message, state: FSMContext):
+async def set_name(message: types.Message, state: FSMContext):
     employer = session.query(Employer).filter_by(user_id=message.from_user.id).first()
     vacancy = session.query(Vacancy).filter_by(employer=employer, finite_state=3).first()
     vacancy.name = message.text
@@ -123,7 +125,7 @@ async def set_website(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=EmployerState.duties)
-async def set_website(message: types.Message, state: FSMContext):
+async def set_duties(message: types.Message, state: FSMContext):
     employer = session.query(Employer).filter_by(user_id=message.from_user.id).first()
     vacancy = session.query(Vacancy).filter_by(employer=employer, finite_state=4).first()
     vacancy.duties = message.text
@@ -142,7 +144,7 @@ async def set_website(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=EmployerState.requirements)
-async def set_website(message: types.Message, state: FSMContext):
+async def set_requirements(message: types.Message, state: FSMContext):
     employer = session.query(Employer).filter_by(user_id=message.from_user.id).first()
     vacancy = session.query(Vacancy).filter_by(employer=employer, finite_state=5).first()
     vacancy.requirements = message.text
@@ -161,7 +163,7 @@ async def set_website(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=EmployerState.conditions)
-async def set_website(message: types.Message, state: FSMContext):
+async def set_conditions(message: types.Message, state: FSMContext):
     employer = session.query(Employer).filter_by(user_id=message.from_user.id).first()
     vacancy = session.query(Vacancy).filter_by(employer=employer, finite_state=6).first()
     vacancy.conditions = message.text
@@ -181,7 +183,7 @@ PRO ( выше 10000 руб.)""", reply_markup=pay_level_keyboard)
 
 
 @dp.message_handler(state=EmployerState.level)
-async def set_website(message: types.Message, state: FSMContext):
+async def set_level(message: types.Message, state: FSMContext):
     employer = session.query(Employer).filter_by(user_id=message.from_user.id).first()
     vacancy = session.query(Vacancy).filter_by(employer=employer, finite_state=7).first()
     if message.text in pay_level_list:
@@ -196,7 +198,7 @@ async def set_website(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=EmployerState.salary)
-async def set_website(message: types.Message, state: FSMContext):
+async def set_salary(message: types.Message, state: FSMContext):
     employer = session.query(Employer).filter_by(user_id=message.from_user.id).first()
     vacancy = session.query(Vacancy).filter_by(employer=employer, finite_state=8).first()
     try:
@@ -209,7 +211,6 @@ async def set_website(message: types.Message, state: FSMContext):
         vacancy.salary = salary
         vacancy.finite_state = 9
         session.commit()
-        session.close()
         await EmployerState.next()
         await message.answer("""Вами выбран уровень {0}! 
 После модерации я покажу ее {1} рекрутерам и они предложат целевых кандидатов, если заявка их заинтересует.
@@ -219,17 +220,36 @@ async def set_website(message: types.Message, state: FSMContext):
             message.from_user.first_name,
             message.from_user.last_name,
         ))
+        await message.answer(vacancy, reply_markup=keyboard_activate)
+        session.close()
     else:
         await message.answer("Введенное значение не удовлетворяет выбранному уровню.")
+
+
+@dp.message_handler(state=EmployerState.activate)
+async def set_activate(message: types.Message, state: FSMContext):
+    employer = session.query(Employer).filter_by(user_id=message.from_user.id).first()
+    vacancy = session.query(Vacancy).filter_by(employer=employer, finite_state=8).first()
+    if message.text == "Запустить подбор":
+        vacancy.active = True
+        vacancy.finite_state = 9
+        session.commit()
+        session.close()
+        await message.answer("Заявка добавлена в выдачу, вам придёт сообщение, как только на неё откликнутся!")
+    elif message.text == "Сохранить в черновик":
+        vacancy.finite_state = 9
+        session.commit()
+        session.close()
+        await message.answer("Заявка сохранена в черновик. Выберите команду /drafts чтобы отобразить ваши черновики")
+    elif message.text == "Отменить":
+        vacancy.delete()
+        session.commit()
+        session.close()
+        await message.answer("Заявка удалена")
+    else:
+        await message.answer("Выберите один из предложенных вариантов", reply_markup=keyboard_activate)
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
 
 
-'''После модерации я покажу ее {1}  рекрутерам и они предложат целевых кандидатов, если заявка их заинтересует.
-Вам останется только сделать свой выбор. А пока вы можете заняться более важными делами. До связи, {2} {3}!""".format(
-            message.text,
-            150,
-            message.from_user.first_name,
-            message.from_user.last_name,
-        )'''
