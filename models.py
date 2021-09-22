@@ -14,6 +14,7 @@ class User(Base):
     telegram_id = Column(Integer, primary_key=True)
     employer = relationship("Employer", back_populates="user")
     recruiter = relationship("Recruiter", back_populates="user")
+    superuser = Column(Boolean, default=False)
 
 
 class Employer(Base):
@@ -130,6 +131,7 @@ class Resume(Base):
             self.refusal,
         )
         return resume
+
 
 user = "postgre"
 password = "postgre"

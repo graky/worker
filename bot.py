@@ -43,6 +43,11 @@ activate_buttons = ["Запустить подбор", "Сохранить в ч
 keyboard_activate.add(*activate_buttons)
 level_recruiter_board = types.ReplyKeyboardMarkup(resize_keyboard=True)
 level_recruiter_board.add("УРОВНЬ LIGHT", "ОТПРАВИТЬ РЕЗЮМЕ")
+admin_buttons = types.InlineKeyboardMarkup()
+
+
+class AdminState(StatesGroup):
+    loign = State()
 
 
 class EmployerState(StatesGroup):
@@ -68,6 +73,24 @@ class RecruiterRegistry(StatesGroup):
     letter = State()
     refusal = State()
 
+
+@dp.message_handler(commands=['admin'])
+async def become_admin(message: types.Message):
+    await AdminState.loign.set()
+    await message.answer("Введите ключ, чтобы получить возможность рассмотрения заявки")
+
+@dp.message_handler(state=AdminState.loign)
+async def login(message: types.Message, state: FSMContext):
+    if message.text == "d873ec68-2729-4c5d-9753-39540c011c75":
+        user = session.query(User).filter_by(telegram_id=message.from_user.id).first()
+        user.superuser = True
+        session.commit()
+        session.close()
+        await message.answer("""Вы получили права модератора. 
+Вам будут поступать резюме рекрутеров для рассмотрения уровня""")
+    else:
+        await message.answer("Неверный пароль")
+    await state.finish()
 
 
 @dp.message_handler(commands=['start'])
@@ -420,7 +443,18 @@ async def set_refusal(message: types.Message, state: FSMContext):
     session.commit()
     await message.answer("Ваше резюме:")
     await message.answer(resume)
+    await message.answer("Я рассмотрю ваше резюме в течение 3 дней и вам будет присвоен соответствующий уровень")
     await state.finish()
+    admins = session.query(User).filter_by(superuser=True).all()
+    for admin in admins:
+        await bot.send_message(admin.telegram_id, "Резюме от рекрутера для рассмотрения")
+        await bot.send_message(admin.telegram_id, resume)
+        admin_buttons.add(
+            types.InlineKeyboardButton("LIGHT", callback_data="LIGHT " + "1 " + str(message.from_user.id)),
+            types.InlineKeyboardButton("MEDIUM", callback_data="MEDIUM " + "1 " + str(message.from_user.id)),
+            types.InlineKeyboardButton("HARD", callback_data="HARD " + "1 " + str(message.from_user.id)),
+            types.InlineKeyboardButton("LIGHT", callback_data="LIGHT " + "1 " + str(message.from_user.id)),
+        )
     session.close()
 
 
