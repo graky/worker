@@ -13,6 +13,7 @@ class User(Base):
     __tablename__ = "user"
     telegram_id = Column(Integer, primary_key=True)
     employer = relationship("Employer", back_populates="user")
+    recruiter = relationship("Recruiter", back_populates="user")
 
 
 class Employer(Base):
@@ -35,6 +36,7 @@ class Vacancy(Base):
     requirements = Column(String)
     conditions = Column(String)
     pay_level = Column(String)
+    numb_level = Column(Integer)
     salary = Column(Integer)
     finite_state = Column(Integer, default=0)
     active = Column(Boolean, default=False)
@@ -72,6 +74,62 @@ class Vacancy(Base):
             self.pay_level,
             self.salary)
         return form
+
+
+class Recruiter(Base):
+    __tablename__ = 'recruiter'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.telegram_id'))
+    user = relationship("User", back_populates="recruiter")
+    level = Column(String)
+    level_numb = Column(Integer)
+    resume = relationship("Resume", back_populates="recruiter")
+
+
+class Resume(Base):
+    __tablename__ = "resume"
+    id = Column(Integer, primary_key=True)
+    recruiter_id = Column(Integer, ForeignKey('recruiter.id'))
+    recruiter = relationship("Recruiter", back_populates="resume")
+    fio = Column(String)
+    years = Column(String)
+    specialization = Column(String)
+    tools = Column(String)
+    difficulties = Column(String)
+    invitation = Column(String)
+    letter = Column(String)
+    refusal = Column(String)
+
+    def __repr__(self):
+        resume = """
+- Ваше ФИО\n
+{0}\n
+- Сколько лет вы в подборе\n
+{1}\n
+- В какой области вы специализируетесь\n
+{2}\n
+- Какими инструментами пользуетесь при подборе\n
+{3}\n
+- С какими трудностями сталкивались при подборе\n
+{4}\n
+- Напишите краткое приглашение соискателю на вакансию\n
+{5}\n
+- Вы не можете долго закрыть заявку и понимаете, что заработная плата не в рынке. Напишите письмо работодателю с предложением откорректировать заявку.\n
+{6}\n
+- Не все соискатели подошли. Как вы откажете соискателю\n
+{7} \n
+"""
+        resume = resume.format(
+            self.fio,
+            self.years,
+            self.specialization,
+            self.tools,
+            self.difficulties,
+            self.invitation,
+            self.letter,
+            self.refusal,
+        )
+        return resume
 
 user = "postgre"
 password = "postgre"
