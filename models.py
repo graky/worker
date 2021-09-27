@@ -14,6 +14,7 @@ class User(Base):
     telegram_id = Column(Integer, primary_key=True)
     employer = relationship("Employer", back_populates="user")
     recruiter = relationship("Recruiter", back_populates="user")
+    answer = relationship("Answer", back_populates="user")
     superuser = Column(Boolean, default=False)
 
 
@@ -41,6 +42,7 @@ class Vacancy(Base):
     salary = Column(Integer)
     finite_state = Column(Integer, default=0)
     active = Column(Boolean, default=False)
+    inwork = relationship("InWork", back_populates="vacancy")
 
     def __repr__(self):
         form = """
@@ -85,7 +87,8 @@ class Recruiter(Base):
     level = Column(String)
     level_numb = Column(Integer)
     resume = relationship("Resume", back_populates="recruiter")
-
+    finished_educ = Column(Boolean, default=False)
+    inwork = relationship("InWork", back_populates="recruiter")
 
 class Resume(Base):
     __tablename__ = "resume"
@@ -100,6 +103,7 @@ class Resume(Base):
     invitation = Column(String)
     letter = Column(String)
     refusal = Column(String)
+    reviewed = Column(Boolean, default=False)
 
     def __repr__(self):
         resume = """
@@ -131,6 +135,42 @@ class Resume(Base):
             self.refusal,
         )
         return resume
+
+
+class Question(Base):
+    __tablename__ = "question"
+    poll_id = Column(String, primary_key=True)
+    question = Column(String)
+
+
+class Answer(Base):
+    __tablename__ = "answer"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.telegram_id'))
+    user = relationship("User", back_populates="answer")
+    score = Column(Integer, default=0)
+
+
+class InWork(Base):
+    __tablename__ = "inwork"
+    id = Column(Integer, primary_key=True)
+    recruiter_id = Column(Integer, ForeignKey('recruiter.id'))
+    recruiter = relationship("Recruiter", back_populates="inwork")
+    vacancy_id = Column(Integer, ForeignKey('vacancy.id'))
+    vacancy = relationship("Vacancy", back_populates="inwork")
+
+
+def get_or_create(session, model, **kwargs):
+    instance = session.query(model).filter_by(**kwargs).one_or_none()
+    if instance:
+        return instance
+    else:
+        instance = model(**kwargs)
+        session.add(instance)
+        session.commit()
+        return instance
+
+
 
 
 user = "postgre"
